@@ -2,11 +2,7 @@
 Noodling with Apache Spark for machine learning
 
 ## Background
-I was initially resistant to doing a lot with Spark/Scala because Scala
-frightened me and I didn't think our data was big enough to need a hammer like
-Spark. Since then, I've been converted. I've barely scratched the surface of
-what can be done with a tool like this, but I'm definitely convinced of its
-power.
+I was initially resistant to exploring Spark in depth. For one, Scala frightened me (it still does, but the barrier to entry is less crazy than I thought it was). I also didn't think our data was big enough to need a hammer like Spark. After spending a few cycles monkeying around with both, I'm a convert. I've barely scratched the surface of what can be done, but I'm definitely convinced of the power of this toolset.
 
 A bit more background:
 
@@ -22,9 +18,9 @@ A bit more background:
   familiar territory coming from Ruby, but I'm definitely still not a Python
   programmer. The bigger issue is that Pyspark still lacks support for much of GraphX and Mllib.
 
-- There is a [JRuby/Spark bridge](https://github.com/ondra-m/ruby-spark) but it's pretty rudimental
+- There is a [JRuby/Spark bridge](https://github.com/ondra-m/ruby-spark) but it's pretty rudimental.
 
-- Amazon's EMR service [supports Spark too](https://aws.amazon.com/elasticmapreduce/details/spark/), which makes the operational side of things much easier. EMR even has a nice feature where you can spin up a cluster just for the purpose of running a single job, then have it automatically terminate at the end of the run so you're not paying for idle resources. And, as of just a few weeks ago, you can even [set it up via Cloudformation](https://aws.amazon.com/about-aws/whats-new/2016/02/aws-cloudformation-adds-support-for-amazon-vpc-nat-gateway-amazon-ec2-container-registry-and-more/)  
+- Amazon's EMR service [supports Spark too](https://aws.amazon.com/elasticmapreduce/details/spark/), which makes the operational side of things much easier. EMR even has a nice feature where you can spin up a cluster just for the purpose of running a single job, then have it automatically terminate at the end of the run so you're not paying for idle resources. And, as of just a few weeks ago, you can even [set it up via Cloudformation](https://aws.amazon.com/about-aws/whats-new/2016/02/aws-cloudformation-adds-support-for-amazon-vpc-nat-gateway-amazon-ec2-container-registry-and-more/).
 
 Other things to investigate
 
@@ -43,4 +39,4 @@ From there, you can poke around in the Spark Shell by running:
     $ spark-shell --driver-cores 2 --driver-memory 8G
 
 When the shell is executing jobs, you can visit `http://localhost:4040` to check
-on status.`
+on status.

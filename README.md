@@ -38,5 +38,11 @@ From there, you can poke around in the Spark Shell by running:
 
     $ spark-shell --driver-cores 2 --driver-memory 8G
 
-When the shell is executing jobs, you can visit `http://localhost:4040` to check
-on status.
+You can also build/run the [PageRank example](blob/master/src/main/scala/ElloPageRank.scala):
+
+    $ heroku pg:psql ROSE -a ello-production -c "\copy (select owner_id, subject_id, priority from followerships) to 'relationships.csv' with csv;"
+    $ heroku pg:psql ROSE -a ello-production -c "\copy (select id, username from users) to 'users.csv' with csv;"
+    $ sbt package
+    $ spark-submit --class "ElloPageRank" --master "local[*]" --driver-cores 2 --driver-memory 8G target/scala-2.10/ello-pagerank_2.10-1.0.jar
+
+While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status.

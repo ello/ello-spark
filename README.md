@@ -38,7 +38,7 @@ From there, you can poke around in the Spark Shell by running:
 
     $ spark-shell --driver-cores 2 --driver-memory 8G
 
-You can also build/run the [PageRank example](blob/master/src/main/scala/ElloPageRank.scala):
+You can also build/run the [PageRank example](src/main/scala/ElloPageRank.scala):
 
     $ heroku pg:psql ROSE -a ello-production -c "\copy (select owner_id, subject_id, priority from followerships) to 'relationships.csv' with csv;"
     $ heroku pg:psql ROSE -a ello-production -c "\copy (select id, username from users) to 'users.csv' with csv;"

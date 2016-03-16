@@ -26,5 +26,7 @@ object ElloPageRank {
 
     val sortedRanks = ranksByUsername.sortBy(_._2, false)
     println(sortedRanks.take(250).mkString("\n"))
+
+    sc.stop()
   }
 }

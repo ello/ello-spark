@@ -1,4 +1,4 @@
-name := "Ello PageRank"
+name := "Ello Spark"
 
 version := "1.0"
 

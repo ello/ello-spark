@@ -1,5 +1,6 @@
 *.class
 *.log
+*.csv
 
 # sbt specific
 .cache
@@ -17,4 +18,4 @@ project/plugins/project/
 .worksheet
 
 # Datafiles
-*.csv
+metastore_db/

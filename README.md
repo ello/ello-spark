@@ -38,11 +38,44 @@ From there, you can poke around in the Spark Shell by running:
 
     $ spark-shell --driver-cores 2 --driver-memory 8G
 
-You can also build/run the [PageRank example](src/main/scala/ElloPageRank.scala):
+There are two examples in here so far:
+
+### PageRank
+
+The [PageRank example](src/main/scala/ElloPageRank.scala) runs PageRank on all
+of the relationships in the network and outputs the users with the highest
+PageRank. It does not currently connect to Postgres to pull its data, so you'll
+need to do a bit of prep to run it.
+
+First, retrieve the relationship and user data in CSV form from a prod replica:
 
     $ heroku pg:psql ROSE -a ello-production -c "\copy (select owner_id, subject_id, priority from followerships) to 'relationships.csv' with csv;"
     $ heroku pg:psql ROSE -a ello-production -c "\copy (select id, username from users) to 'users.csv' with csv;"
-    $ sbt package
-    $ spark-submit --class "ElloPageRank" --master "local[*]" --driver-cores 2 --driver-memory 8G target/scala-2.10/ello-pagerank_2.10-1.0.jar
 
-While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status.
+Second, build the Scala jar:
+
+    $ sbt package
+
+Finally, run the job via `spark-submit`:
+
+    $ spark-submit --class "ElloPageRank" --master "local[*]" --driver-cores 2 --driver-memory 8G target/scala-2.10/ello-spark.10-1.0.jar
+
+While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status. When it completes, it will output the top users and their PageRank to the  console.
+
+### Recommended Followers (ALS)
+
+The [Recommended Followers example](src/main/scala/ElloRecommend.scala) runs ALS on all of the relationships in the network and outputs a set of recommended followers for that user. It connects to Postgres using a JDBC DataFrame to pull its data, which is slightly slower, but does not require any prep data. You will need to pull a `DATABASE_URL` for a prod replica to use it, however.
+
+First, build the Scala jar:
+
+    $ sbt package
+
+Then, locate and copy the Postgres connection URL:
+
+    $ heroku pg:credentials ROSE -a ello-production
+
+Finally, run the job via `spark-submit`:
+
+    $ spark-submit --driver-class-path postgresql-9.4-1200-jdbc41.jar --class "ElloRecommend" --master "local[*]" --driver-cores 2 --driver-memory 8G target/scala-2.10/ello-spark_2.10-1.0.jar <DATABASE_URL>
+
+While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status. When it completes, it will output the recommended users and their rating to the  console.

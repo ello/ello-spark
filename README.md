@@ -18,7 +18,7 @@ A bit more background:
   familiar territory coming from Ruby, but I'm definitely still not a Python
   programmer. The bigger issue is that Pyspark still lacks support for much of GraphX and Mllib.
 
-- There is a [JRuby/Spark bridge](https://github.com/ondra-m/ruby-spark) but it's pretty rudimental.
+- There is a [JRuby/Spark bridge](https://github.com/ondra-m/ruby-spark) but it's pretty rudimentary.
 
 - Amazon's EMR service [supports Spark too](https://aws.amazon.com/elasticmapreduce/details/spark/), which makes the operational side of things much easier. EMR even has a nice feature where you can spin up a cluster just for the purpose of running a single job, then have it automatically terminate at the end of the run so you're not paying for idle resources. And, as of just a few weeks ago, you can even [set it up via Cloudformation](https://aws.amazon.com/about-aws/whats-new/2016/02/aws-cloudformation-adds-support-for-amazon-vpc-nat-gateway-amazon-ec2-container-registry-and-more/).
 
@@ -27,6 +27,9 @@ Other things to investigate
 - My current experimenting involves pulling CSVs out of Postgres and reading
   them into Spark manually. It'd be nice to figure out how to pull from Postgres
   directly with a JdbcRDD or a SchemaRDD. Or even Kinesis directly!
+- https://github.com/RedisLabs/spark-redis
+- https://docs.google.com/presentation/d/1YMPJGo62hRPDz1iXQK2fITJAFOJn6H3oPD5vsrMwA1c/edit?pref=2&pli=1#slide=id.g59ff6204c_0_116
+- https://gist.github.com/erikerlandson/2f2b3dfe03f3266b577c
 
 ## Usage
 

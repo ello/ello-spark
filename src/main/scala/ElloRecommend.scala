@@ -12,6 +12,8 @@ object ElloRecommend {
     val sc = new SparkContext(conf)
 
     val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+
+    import sqlContext.implicits._
     val prop = new java.util.Properties;
     val dbUri = new java.net.URI(args(0))
 
@@ -36,7 +38,7 @@ object ElloRecommend {
     // Build the recommendation model using ALS
     val rank = 50
     val numIterations = 10
-    val model = ALS.trainImplicit(ratings, rank, numIterations)
+    val model = ALS.trainImplicit(ratings.rdd, rank, numIterations)
 
     println("userFeatures = ", model.userFeatures.count)
     println("productFeatures = ", model.productFeatures.count)

@@ -57,6 +57,7 @@ object ElloStreamingImpressionCount {
     require(credentials != null,
       "No AWS credentials found. Please specify credentials using one of the methods specified " +
       "in http://docs.aws.amazon.com/AWSSdkDocsJava/latest/DeveloperGuide/credentials.html")
+
       val kinesisClient = new AmazonKinesisClient(credentials)
       kinesisClient.setEndpoint(endpointUrl)
       val numShards = kinesisClient.describeStream(streamName).getStreamDescription().getShards().size
@@ -84,7 +85,7 @@ object ElloStreamingImpressionCount {
       val ssc = new StreamingContext(sparkConfig, batchInterval)
 
       // Set up checkpointing
-      ssc.checkpoint("/tmp/spark")
+      ssc.checkpoint(s"s3n://ello-spark-checkpoints/$appName")
 
       // Create the Kinesis DStreams
       val kinesisStreams = (0 until numStreams).map { i =>

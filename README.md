@@ -30,6 +30,7 @@ Other things to investigate
 - https://github.com/RedisLabs/spark-redis
 - https://docs.google.com/presentation/d/1YMPJGo62hRPDz1iXQK2fITJAFOJn6H3oPD5vsrMwA1c/edit?pref=2&pli=1#slide=id.g59ff6204c_0_116
 - https://gist.github.com/erikerlandson/2f2b3dfe03f3266b577c
+- https://github.com/holdenk/learning-spark-examples/blob/master/src/main/java/com/oreilly/learningsparkexamples/java/MLlib.java
 
 ## Usage
 

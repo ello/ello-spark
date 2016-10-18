@@ -60,7 +60,7 @@ Finally, run the job via `spark-submit`:
 
     $ spark-submit --class "ElloPageRank" --master "local[*]" --driver-cores 2 --driver-memory 8G target/scala-2.10/ello-spark.10-1.0.jar
 
-While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status. When it completes, it will output the top users and their PageRank to the  console.
+While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status. When it completes, it will output the top users and their PageRank to the console.
 
 ### Follower Recommendation (Alternating Least Squares)
 
@@ -78,7 +78,25 @@ Finally, run the job via `spark-submit`:
 
     $ spark-submit --class "ElloRecommend" --master "local[*]" --driver-cores 2 --driver-memory 8G target/scala-2.10/ello-spark_2.10-1.0.jar <DATABASE_URL>
 
-While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status. When it completes, it will output the recommended users and their rating to the  console.
+<<<<<<< HEAD
+While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status. When it completes, it will output the recommended users and their rating to the console.
+
+
+### Streaming Post Impression Counts
+
+The [Streaming Count example](src/main/scala/co/ello/impressions/ElloStreamingCount.scala) runs a Kinesis Client Library consumer to subscribe to incoming Kinesis events that indicate post impressions, and sums them as it goes, on both post and author dimensions.
+
+It requires that your AWS credentials be set as environment variables.
+
+First, build the Scala jar as a full assembly (this gets rid of the need to mess with your classpath):
+
+    $ sbt assembly
+
+Then, run the job via `spark-submit`:
+
+    $ spark-submit --class "ElloStreamingImpressionCount" --master "local[*]" --driver-cores 2 --driver-memory 8G target/scala-2.10/Ello\ Spark-assembly-1.0.jar ello-streaming-impression-count ello-production-stream https://kinesis.us-east-1.amazonaws.com
+
+While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status. As it runs, it will output the top viewed posts to the console.
 
 ## Code of Conduct
 Ello was created by idealists who believe that the essential nature of all human beings is to be kind, considerate, helpful, intelligent, responsible, and respectful of others. To that end, we will be enforcing [the Ello rules](https://ello.co/wtf/policies/rules/) within all of our open source projects. If you don’t follow the rules, you risk being ignored, banned, or reported for abuse.

@@ -110,11 +110,11 @@ object ElloStreamingImpressionCount {
             if (record.getSchema().getName() == "post_was_viewed") Some(record) else None
         }
 
-        asScalaIterator(dataFileReader).toList.collect { case PostWasViewedRecord(record) => (record.get("post").asInstanceOf[GenericRecord].get("id").toString(),
-                                                                                              record.get("author").asInstanceOf[GenericRecord].get("id").toString(),
-                                                                                              Option(record.get("viewer").asInstanceOf[GenericRecord]) match {
-                                                                                                case Some(viewer) => viewer.get("id").toString()
-                                                                                                case None => null
+        dataFileReader.iterator().toSeq collect { case PostWasViewedRecord(record) => (record.get("post").asInstanceOf[GenericRecord].get("id").toString(),
+                                                                                       record.get("author").asInstanceOf[GenericRecord].get("id").toString(),
+                                                                                       Option(record.get("viewer").asInstanceOf[GenericRecord]) match {
+                                                                                         case Some(viewer) => viewer.get("id").toString()
+                                                                                         case None => null
         }) }
 
         // val sb = Seq.newBuilder[S]

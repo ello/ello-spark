@@ -80,77 +80,91 @@ object ElloStreamingImpressionCount {
     // DynamoDB of the same region as the Kinesis stream
     val regionName = AwsHostNameUtils.parseRegionName(endpointUrl, "")
 
+    // Set the path to checkpoint this application to/from
+    val checkpointPath = s"s3n://ello-spark-checkpoints/$appName"
+
     // Setup the SparkConfig and StreamingContext
-    val sparkConfig = new SparkConf().setAppName("ElloStreamingImpressionCounts")
-    val ssc = new StreamingContext(sparkConfig, batchInterval)
+    val ssc = StreamingContext.getActiveOrCreate(checkpointPath, () => {
+      val sparkConfig = new SparkConf().setAppName("ElloStreamingImpressionCounts")
 
-    // Set up checkpointing
-    ssc.checkpoint(s"s3n://ello-spark-checkpoints/$appName")
+      // Shut down gracefully
+      sparkConfig.set("spark.streaming.stopGracefullyOnShutdown","true")
 
-    // Create the Kinesis DStreams
-    val kinesisStreams = (0 until numStreams).map { i =>
-      KinesisUtils.createStream(ssc, appName, streamName, endpointUrl, regionName,
-        InitialPositionInStream.TRIM_HORIZON, kinesisCheckpointInterval, StorageLevel.MEMORY_AND_DISK_2)
-    }
+      val streamingContext = new StreamingContext(sparkConfig, batchInterval)
 
-    // Set up the recurring state specs
-    val postStateSpec = StateSpec.function(trackStateFunc _)
-    val authorStateSpec = StateSpec.function(trackStateFunc _)
+      // Set up a checkpoint path
+      streamingContext.checkpoint(checkpointPath)
 
-    // Union all the streams
-    val unionStreams = ssc.union(kinesisStreams)
 
-    // Convert each line of Array[Byte] to String, and split into words
-    val impressions = unionStreams.flatMap { byteArray =>
-      val datumReader = new GenericDatumReader[GenericRecord]()
-      val seekableInput = new SeekableByteArrayInput(byteArray)
-      val dataFileReader = new DataFileReader[GenericRecord](seekableInput, datumReader)
-
-      object PostWasViewedRecord {
-        def unapply(record : GenericRecord): Option[GenericRecord] =
-          if (record.getSchema().getName() == "post_was_viewed") Some(record) else None
+      // Create the Kinesis DStreams
+      val kinesisStreams = (0 until numStreams).map { i =>
+        KinesisUtils.createStream(streamingContext, appName, streamName, endpointUrl, regionName,
+          InitialPositionInStream.TRIM_HORIZON, kinesisCheckpointInterval, StorageLevel.MEMORY_AND_DISK_2)
       }
 
-      dataFileReader.iterator().toSeq collect { case PostWasViewedRecord(record) => (record.get("post").asInstanceOf[GenericRecord].get("id").toString(),
-                                                                                      record.get("author").asInstanceOf[GenericRecord].get("id").toString(),
-                                                                                      Option(record.get("viewer").asInstanceOf[GenericRecord]) match {
-                                                                                        case Some(viewer) => viewer.get("id").toString()
-                                                                                        case None => null
-      }) }
+      // Set up the recurring state specs
+      val postStateSpec = StateSpec.function(trackStateFunc _)
+      val authorStateSpec = StateSpec.function(trackStateFunc _)
 
-      // val sb = Seq.newBuilder[S]
-      // while (dataFileReader.hasNext) {
-      //   user = dataFileReader.next(user)
-      //   System.err.println("Read " + user.getSchema().getName() + " record from Avro: " + user)
-      // }
-      // sb.result()
-    }
+      // Union all the streams
+      val unionStreams = streamingContext.union(kinesisStreams)
 
-    // Map each impression to a (post_id, 1) tuple so we can reduce by key to count the impressions
-    val postCounts = impressions.map(row => (row._1, 1)).reduceByKey(_ + _)
+      // Convert each line of Array[Byte] to String, and split into words
+      val impressions = unionStreams.flatMap { byteArray =>
+        val datumReader = new GenericDatumReader[GenericRecord]()
+        val seekableInput = new SeekableByteArrayInput(byteArray)
+        val dataFileReader = new DataFileReader[GenericRecord](seekableInput, datumReader)
 
-    // Incorporate this batch into the long-running state
-    val postCountStateStream = postCounts.mapWithState(postStateSpec)
+        object PostWasViewedRecord {
+          def unapply(record : GenericRecord): Option[GenericRecord] =
+            if (record.getSchema().getName() == "post_was_viewed") Some(record) else None
+        }
 
-    // Output the current snapshot state
-    val postCountStateSnapshotStream = postCountStateStream.stateSnapshots()
-    postCountStateSnapshotStream.foreachRDD { rdd =>
-      println("Top Posts: -------------------------------")
-      rdd.top(10)(Ordering[Long].on(_._2)).foreach(println)
-    }
+        dataFileReader.iterator().toSeq collect { case PostWasViewedRecord(record) => (record.get("post").asInstanceOf[GenericRecord].get("id").toString(),
+                                                                                        record.get("author").asInstanceOf[GenericRecord].get("id").toString(),
+                                                                                        Option(record.get("viewer").asInstanceOf[GenericRecord]) match {
+                                                                                          case Some(viewer) => viewer.get("id").toString()
+                                                                                          case None => null
+        }) }
 
-    // Map each post to a (author_id, 1) tuple so we can reduce by key to count the impressions
-    val authorCounts = impressions.map(row => (row._2, 1)).reduceByKey(_ + _)
+        // val sb = Seq.newBuilder[S]
+        // while (dataFileReader.hasNext) {
+        //   user = dataFileReader.next(user)
+        //   System.err.println("Read " + user.getSchema().getName() + " record from Avro: " + user)
+        // }
+        // sb.result()
+      }
 
-    // Incorporate this batch into the long-running state
-    val authorCountStateStream = authorCounts.mapWithState(authorStateSpec)
+      // Map each impression to a (post_id, 1) tuple so we can reduce by key to count the impressions
+      val postCounts = impressions.map(row => (row._1, 1)).reduceByKey(_ + _)
 
-    // Output the current snapshot state
-    val authorCountStateSnapshotStream = authorCountStateStream.stateSnapshots()
-    authorCountStateSnapshotStream.foreachRDD { rdd =>
-      println("Top Authors: -------------------------------")
-      rdd.top(10)(Ordering[Long].on(_._2)).foreach(println)
-    }
+      // Incorporate this batch into the long-running state
+      val postCountStateStream = postCounts.mapWithState(postStateSpec)
+      postCountStateStream.print()
+
+      // Output the current snapshot state
+      val postCountStateSnapshotStream = postCountStateStream.stateSnapshots()
+      postCountStateSnapshotStream.foreachRDD { rdd =>
+        println("Top Posts: -------------------------------")
+        rdd.top(10)(Ordering[Long].on(_._2)).foreach(println)
+      }
+
+      // Map each post to a (author_id, 1) tuple so we can reduce by key to count the impressions
+      val authorCounts = impressions.map(row => (row._2, 1)).reduceByKey(_ + _)
+
+      // Incorporate this batch into the long-running state
+      val authorCountStateStream = authorCounts.mapWithState(authorStateSpec)
+      authorCountStateStream.print()
+
+      // Output the current snapshot state
+      val authorCountStateSnapshotStream = authorCountStateStream.stateSnapshots()
+      authorCountStateSnapshotStream.foreachRDD { rdd =>
+        println("Top Authors: -------------------------------")
+        rdd.top(10)(Ordering[Long].on(_._2)).foreach(println)
+      }
+
+      streamingContext
+    })
 
     // Start the streaming context and await termination
     ssc.start()

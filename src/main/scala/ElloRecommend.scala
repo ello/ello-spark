@@ -11,8 +11,6 @@ object ElloRecommend {
     val conf = new SparkConf().setAppName("Ello Recommend")
     val sc = new SparkContext(conf)
 
-
-    // val dbUrl = "***REMOVED***";
     val sqlContext = new org.apache.spark.sql.SQLContext(sc)
     val prop = new java.util.Properties;
     val dbUri = new java.net.URI(args(0))

@@ -1,0 +1,20 @@
+language: scala
+scala:
+- 2.10.5
+services:
+- redis-server
+cache:
+  directories:
+  - "$HOME/.ivy2/cache"
+  - "$HOME/.sbt/boot/"
+before_cache:
+  # Tricks to avoid unnecessary cache updates
+  - find $HOME/.ivy2 -name "ivydata-*.properties" -delete
+  - find $HOME/.sbt -name "*.lock" -delete
+notifications:
+  email: false
+  slack:
+    on_success: change
+    on_failure: change
+    rooms:
+      secure: UtTYCIMLUkQkUQ2M+fkMVeLA4oqPI7d25cwcrat4GWJz8Xs48LZW7HDBiUy9MZJ0wy/E37HbBKCDFP0f/BeWsP7Un71D5nFNtmAcppFHxskr0W+ZPBDE+mu6J2ERKqDI69nYqN3jNEmk3cuGJqzFjhW04SqYnfpQhDUniQHMlgJeBZFvd1wSFBJEA6sMiQyu3bagt+wV9v1jYuOSUy+4HKpzUQwZCyGrz7IJyDigXIc1f+lXszrNijlvMYVnA5djV2QVecRjWkdeB2vbhyXRnrmEqKGyJNV+YYMrb4v+lRGhgGDW7qlBpFaTnADQ3zqT7oJqOst8VHcSPu8SKLsw9jzlylzFYV+KnLwsREZg227+xbMKd7Wd9EOYW4K7yp3LRtGcUg0DnQL/PRNu/pNuBN3QQBDpZrgSQkwrVlnMtD8CxHY24JjDvCfD151zlXkUtJ4Edn9SCehUW4XoAh8iOTzCMMebQ552aZUaGi9o+AYhxfZRZKBgScgV3xo936pusV0gl9GsvGFrNuiDu4xCyeE30+5v6OMlgNAAOsi4DeqUlq1J7DeVUAujBhLYeUPo+febvHDjq+v9T9dUCjy/QlELosatkjP75//JpA3p4musWO8dZ6A6a25kc9HbEkfkmb2uVuH41W53tDLKjUBc5dvGQLJTfo7grQyRAYtfNEU=

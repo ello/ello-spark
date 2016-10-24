@@ -3,17 +3,27 @@ name := "Ello Spark"
 version := "1.0"
 
 scalaVersion := "2.10.5"
+sparkVersion := "2.0.1"
+
+sparkComponents ++= Seq("streaming", "sql", "graphx", "mllib")
+
+spDependencies ++= Seq(
+  "RedisLabs/spark-redis:0.3.2"
+)
 
 libraryDependencies ++= Seq(
-  "org.apache.spark" %% "spark-core" % "2.0.0" % "provided",
-  "org.apache.spark" %% "spark-graphx" % "2.0.0" % "provided",
-  "org.apache.spark" %% "spark-mllib" % "2.0.0" % "provided",
   "org.apache.spark" %% "spark-streaming-kinesis-asl" % "2.0.1",
   "org.postgresql" % "postgresql" % "9.4-1200-jdbc41",
   "org.apache.avro" % "avro" % "1.8.1",
   "com.amazonaws" % "aws-java-sdk" % "1.10.77",
-  "org.apache.hadoop" % "hadoop-aws" % "2.7.3"
+  "org.apache.hadoop" % "hadoop-aws" % "2.7.3",
+  "org.scalatest" %% "scalatest" % "3.0.0" % "test",
+  "com.holdenkarau" %% "spark-testing-base" % "2.0.0_0.4.7" % "test"
 )
+
+// Up the default RAM for tests so Spark doesn't implode
+javaOptions ++= Seq("-Xms512M", "-Xmx2048M", "-XX:MaxPermSize=2048M", "-XX:+CMSClassUnloadingEnabled")
+parallelExecution in Test := false
 
 assemblyMergeStrategy in assembly := {
   case PathList("org","aopalliance", xs @ _*) => MergeStrategy.last

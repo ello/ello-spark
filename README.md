@@ -66,9 +66,10 @@ While jobs are executing (in the shell or in batch), you can visit `http://local
 
 The [Recommended Followers example](src/main/scala/ElloRecommend.scala) runs the ALS algorithm on all of the relationships in the network and outputs a set of recommended followers for that user. It connects to Postgres using a JDBC DataFrame to pull its data, which is slightly slower, but does not require any prep data. You will need to pull a `DATABASE_URL` for a prod replica to use it, however.
 
-First, build the Scala jar:
+First, build the Scala jar as a full assembly (this gets rid of the need to mess
+with your classpath):
 
-    $ sbt package
+    $ sbt assembly
 
 Then, locate and copy the Postgres connection URL:
 
@@ -94,7 +95,7 @@ First, build the Scala jar as a full assembly (this gets rid of the need to mess
 
 Then, run the job via `spark-submit`:
 
-    $ spark-submit --class "ElloStreamingImpressionCount" --master "local[*]" --driver-cores 2 --driver-memory 8G target/scala-2.10/Ello\ Spark-assembly-1.0.jar ello-streaming-impression-count ello-production-stream https://kinesis.us-east-1.amazonaws.com
+    $ spark-submit --class "co.ello.impressions.ElloStreamingCount" --master "local[*]" --driver-cores 2 --driver-memory 8G target/scala-2.10/Ello\ Spark-assembly-1.0.jar ello-streaming-impression-count ello-production-stream https://kinesis.us-east-1.amazonaws.com <S3 bucket for checkpoints> <Redis URL for storing counts>
 
 While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status. As it runs, it will output the top viewed posts to the console.
 

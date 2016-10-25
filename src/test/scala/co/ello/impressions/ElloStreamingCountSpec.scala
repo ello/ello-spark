@@ -1,8 +1,8 @@
-import org.scalatest.{FunSpec, Matchers, BeforeAndAfter}
+import co.ello.testing._
 import com.holdenkarau.spark.testing.StreamingSuiteBase
 import co.ello.impressions._
 
-class ElloStreamingCountSpec extends FunSpec with Matchers with BeforeAndAfter with StreamingSuiteBase {
+class ElloStreamingCountSpec extends UnitSpec with StreamingSuiteBase {
 
 
   describe("Computing counts by post") {

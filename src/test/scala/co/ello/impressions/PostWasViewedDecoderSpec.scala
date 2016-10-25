@@ -1,9 +1,9 @@
-import org.scalatest.{FunSpec, Matchers, BeforeAndAfter}
+import co.ello.testing._
 import java.nio.charset.StandardCharsets._
 import java.nio.file.{Files, Paths}
 import co.ello.impressions._
 
-class PostWasViewedDecoderSpec extends FunSpec with Matchers with BeforeAndAfter {
+class PostWasViewedDecoderSpec extends UnitSpec {
 
   class AvroFixture(path: String) {
     val avroBytes = Files.readAllBytes(Paths.get(getClass.getResource(s"/fixtures/$path.avro").toURI))

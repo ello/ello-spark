@@ -1,7 +1,7 @@
 import org.scalatest.{FunSpec, Matchers, BeforeAndAfter}
 import java.nio.charset.StandardCharsets._
 import java.nio.file.{Files, Paths}
-import co.ello.impressions.PostWasViewedDecoder
+import co.ello.impressions._
 
 class PostWasViewedDecoderSpec extends FunSpec with Matchers with BeforeAndAfter {
 
@@ -10,17 +10,17 @@ class PostWasViewedDecoderSpec extends FunSpec with Matchers with BeforeAndAfter
   }
 
   describe("Decoding a valid Avro record with all fields") {
-    it("returns a tuple of (post_id, author_id, viewer_id)") {
+    it("returns an Impression of (post_id, author_id, viewer_id)") {
       new AvroFixture("post_was_viewed") {
-        PostWasViewedDecoder(avroBytes) shouldEqual Seq(("11", "1", "1"))
+        PostWasViewedDecoder(avroBytes) shouldEqual Seq(Impression("11", "1", "1"))
       }
     }
   }
 
   describe("Decoding a valid Avro record with no viewer") {
-    it("returns a tuple of (post_id, author_id, null)") {
+    it("returns an Impression of (post_id, author_id, null)") {
       new AvroFixture("post_was_viewed_null_viewer") {
-        PostWasViewedDecoder(avroBytes) shouldEqual Seq(("11", "1", null))
+        PostWasViewedDecoder(avroBytes) shouldEqual Seq(Impression("11", "1", null))
       }
     }
   }

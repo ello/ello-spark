@@ -7,7 +7,7 @@ import org.apache.avro.generic.{GenericDatumReader, GenericRecord}
 import scala.collection.JavaConversions._
 
 object PostWasViewedDecoder {
-  def apply(byteArray: Array[Byte]): Seq[Tuple3[String, String, String]] = {
+  def apply(byteArray: Array[Byte]): Seq[Impression] = {
 
       val datumReader = new GenericDatumReader[GenericRecord]()
       val seekableInput = new SeekableByteArrayInput(byteArray)
@@ -18,11 +18,11 @@ object PostWasViewedDecoder {
           if (record.getSchema().getName() == "post_was_viewed") Some(record) else None
       }
 
-      dataFileReader.iterator().toSeq collect { case PostWasViewedRecord(record) => (record.get("post").asInstanceOf[GenericRecord].get("id").toString(),
-                                                                                      record.get("author").asInstanceOf[GenericRecord].get("id").toString(),
-                                                                                      Option(record.get("viewer").asInstanceOf[GenericRecord]) match {
-                                                                                        case Some(viewer) => viewer.get("id").toString()
-                                                                                        case None => null
+      dataFileReader.iterator().toSeq collect { case PostWasViewedRecord(record) => Impression(record.get("post").asInstanceOf[GenericRecord].get("id").toString(),
+                                                                                               record.get("author").asInstanceOf[GenericRecord].get("id").toString(),
+                                                                                               Option(record.get("viewer").asInstanceOf[GenericRecord]) match {
+                                                                                                 case Some(viewer) => viewer.get("id").toString()
+                                                                                                 case None => null
       }) }
   }
 }

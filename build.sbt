@@ -17,7 +17,7 @@ libraryDependencies ++= Seq(
   "org.apache.avro" % "avro" % "1.8.1",
   "com.amazonaws" % "aws-java-sdk" % "1.10.77",
   "org.apache.hadoop" % "hadoop-aws" % "2.7.3",
-  "org.scalatest" %% "scalatest" % "3.0.0" % "test",
+  "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "com.holdenkarau" %% "spark-testing-base" % "2.0.0_0.4.7" % "test"
 )
 

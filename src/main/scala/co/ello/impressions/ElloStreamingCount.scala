@@ -17,15 +17,16 @@ import org.apache.spark.SparkConf
 import org.apache.spark.internal.Logging
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
-import org.apache.spark.streaming.dstream.DStream.toPairDStreamFunctions
+import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.kinesis.KinesisUtils
 import org.apache.spark.streaming._
 
 import com.redislabs.provider.redis._
 
-import co.ello.impressions.PostWasViewedDecoder
-
 // Example at https://github.com/apache/spark/blob/master/external/kinesis-asl/src/main/scala/org/apache/spark/examples/streaming/KinesisWordCountASL.scala
+
+
+case class Impression(post_id: String, author_id: String, viewer_id: String)
 
 object ElloStreamingCount {
   def main(args: Array[String]) {
@@ -106,21 +107,13 @@ object ElloStreamingCount {
         InitialPositionInStream.TRIM_HORIZON, kinesisCheckpointInterval, StorageLevel.MEMORY_AND_DISK_2)
     }
 
-    // Set up the recurring state specs
-    val postStateSpec = StateSpec.function(trackStateFunc _)
-    val authorStateSpec = StateSpec.function(trackStateFunc _)
-
     // Union all the streams
     val unionStreams = ssc.union(kinesisStreams)
 
     // Convert each line of Array[Byte] to String, and split into words
     val impressions = unionStreams.flatMap(PostWasViewedDecoder(_))
 
-    // Map each impression to a (post_id, 1) tuple so we can reduce by key to count the impressions
-    val postCounts = impressions.map(row => (row._1, 1)).reduceByKey(_ + _)
-
-    // Incorporate this batch into the long-running state
-    val postCountStateStream = postCounts.mapWithState(postStateSpec)
+    val postCountStateStream = postCountStreamFromImpressions(impressions)
 
     // Output the current snapshot state
     val postCountStateSnapshotStream = postCountStateStream.stateSnapshots()
@@ -129,11 +122,8 @@ object ElloStreamingCount {
       rdd.top(10)(Ordering[Long].on(_._2)).foreach(println)
     }
 
-    // Map each post to a (author_id, 1) tuple so we can reduce by key to count the impressions
-    val authorCounts = impressions.map(row => (row._2, 1)).reduceByKey(_ + _)
 
-    // Incorporate this batch into the long-running state
-    val authorCountStateStream = authorCounts.mapWithState(authorStateSpec)
+    val authorCountStateStream = authorCountStreamFromImpressions(impressions)
 
     // Output the current snapshot state
     val authorCountStateSnapshotStream = authorCountStateStream.stateSnapshots()
@@ -152,5 +142,27 @@ object ElloStreamingCount {
     val output = (key, sum)
     state.update(sum)
     Some(output)
+  }
+
+  def postCountStreamFromImpressions(impressions: DStream[Impression]) = {
+    // Map each impression to a (post_id, 1) tuple so we can reduce by key to count the impressions
+    val postCounts = impressions.map(i => (i.post_id, 1)).reduceByKey(_ + _)
+
+    // Set up the recurring state specs
+    val postStateSpec = StateSpec.function(trackStateFunc _)
+
+    // Incorporate this batch into the long-running state
+    postCounts.mapWithState(postStateSpec)
+  }
+
+  def authorCountStreamFromImpressions(impressions: DStream[Impression]) = {
+    // Map each impression to a (author_id, 1) tuple so we can reduce by key to count the impressions
+    val authorCounts = impressions.map(i => (i.author_id, 1)).reduceByKey(_ + _)
+
+    // Set up the recurring state specs
+    val authorStateSpec = StateSpec.function(trackStateFunc _)
+
+    // Incorporate this batch into the long-running state
+    authorCounts.mapWithState(authorStateSpec)
   }
 }

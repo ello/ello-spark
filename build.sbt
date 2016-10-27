@@ -48,3 +48,17 @@ assemblyMergeStrategy in assembly := {
     val oldStrategy = (assemblyMergeStrategy in assembly).value
     oldStrategy(x)
 }
+
+// Create a default Scala style task to run with tests
+lazy val testScalastyle = taskKey[Unit]("testScalastyle")
+
+testScalastyle := org.scalastyle.sbt.ScalastylePlugin.scalastyle.in(Test).toTask("").value
+
+(test in Test) <<= (test in Test) dependsOn testScalastyle
+
+// Create a another Scala style task to run with tests on actualy sources
+lazy val compileScalastyle = taskKey[Unit]("testScalastyle")
+
+compileScalastyle := org.scalastyle.sbt.ScalastylePlugin.scalastyle.in(Compile).toTask("").value
+
+(test in Test) <<= (test in Test) dependsOn compileScalastyle

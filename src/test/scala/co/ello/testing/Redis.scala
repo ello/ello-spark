@@ -5,7 +5,7 @@ import com.redislabs.provider.redis._
 
 trait Redis extends BeforeAndAfterEach { this: Suite =>
 
-  var redisConfig = new RedisConfig(new RedisEndpoint("127.0.0.1", 6379))
+  var redisConfig = new RedisConfig(new RedisEndpoint)
 
   override def beforeEach() {
     redisConfig.hosts.foreach( node => {

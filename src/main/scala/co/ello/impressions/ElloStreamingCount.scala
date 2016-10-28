@@ -93,7 +93,7 @@ object ElloStreamingCount {
     })
 
     // Configure the Redis options
-    val redisConfig = new RedisConfig(redisEndpointFromConnectionUrl(redisUrl))
+    val redisConfig = new RedisConfig(new RedisEndpoint(redisUrl))
 
     // Create the Kinesis DStreams
     val kinesisStreams = (0 until numStreams).map { i =>
@@ -113,11 +113,6 @@ object ElloStreamingCount {
     // Start the streaming context and await termination
     ssc.start()
     ssc.awaitTermination()
-  }
-
-  def redisEndpointFromConnectionUrl(url: String): RedisEndpoint = {
-    val uri = new URI(url)
-    new RedisEndpoint(uri.getHost(), uri.getPort(), uri.getUserInfo())
   }
 
   def jdbcUrlFromPostgresUrl(url: String): String = {

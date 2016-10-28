@@ -26,7 +26,7 @@ import com.redislabs.provider.redis._
 // Example at https://github.com/apache/spark/blob/master/external/kinesis-asl/src/main/scala/org/apache/spark/examples/streaming/KinesisWordCountASL.scala
 
 
-case class Impression(post_id: String, author_id: String, viewer_id: String)
+case class Impression(post_id: String, author_id: String, viewer_id: Option[String])
 
 object ElloStreamingCount {
   def main(args: Array[String]) {

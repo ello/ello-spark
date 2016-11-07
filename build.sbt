@@ -42,6 +42,7 @@ assemblyMergeStrategy in assembly := {
   case "META-INF/ECLIPSEF.RSA" => MergeStrategy.last
   case "META-INF/mailcap" => MergeStrategy.last
   case "META-INF/mimetypes.default" => MergeStrategy.last
+  case "META-INF/services/java.sql.Driver" => MergeStrategy.filterDistinctLines
   case "plugin.properties" => MergeStrategy.last
   case "log4j.properties" => MergeStrategy.last
   case x =>

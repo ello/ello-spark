@@ -15,12 +15,9 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkConf
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.streaming._
-import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.kinesis.KinesisUtils
 
 import com.redislabs.provider.redis._
-
-import java.net.URI
 
 // Example at https://github.com/apache/spark/blob/master/external/kinesis-asl/src/main/scala/org/apache/spark/examples/streaming/KinesisWordCountASL.scala
 
@@ -28,10 +25,10 @@ object ElloStreamingCount {
   def main(args: Array[String]) {
 
     // Check that all required args were passed in.
-    if (args.length != 5) {
+    if (args.length != 6) {
       System.err.println(
         """
-        | Usage: ElloStreamingImpressionCount <app-name> <stream-name> <endpoint-url> <region-name> <checkpoint-bucket-name>
+        | Usage: ElloStreamingImpressionCount <app-name> <stream-name> <endpoint-url> <region-name> <checkpoint-bucket-name> <redis-url> <postgres-url>
         |
         |    <app-name> is the name of the consumer app, used to track the read data in DynamoDB
         |    <stream-name> is the name of the Kinesis stream
@@ -39,12 +36,13 @@ object ElloStreamingCount {
         |                   (e.g. https://kinesis.us-east-1.amazonaws.com)
         |    <checkpoint-bucket-name> is the name of an S3 bucket to store checkpoint data
         |    <redis-url> is the URL to a Redis host to store counts
+        |    <postgres-url> is the Heroku-style URL to a Postgres instance from which to pull initial post/author IDs
         """.stripMargin)
       System.exit(1)
     }
 
     // Populate the appropriate variables from the given args
-    val Array(appName, streamName, endpointUrl, checkpointBucket, redisUrl) = args
+    val Array(appName, streamName, endpointUrl, checkpointBucket, redisUrl, postgresUrl) = args
 
     // Determine the number of shards from the stream using the low-level Kinesis Client from the AWS Java SDK.
     val credentials = new DefaultAWSCredentialsProviderChain().getCredentials()
@@ -95,6 +93,9 @@ object ElloStreamingCount {
     // Configure the Redis options
     val redisConfig = new RedisConfig(new RedisEndpoint(redisUrl))
 
+    // Load the initial snapshot
+    var postCountsRDD = RedisSnapshotLoader(ssc.sparkContext, redisConfig, postgresUrl)
+
     // Create the Kinesis DStreams
     val kinesisStreams = (0 until numStreams).map { i =>
       KinesisUtils.createStream(ssc, appName, streamName, endpointUrl, regionName,
@@ -107,6 +108,8 @@ object ElloStreamingCount {
     // Convert each line of Array[Byte] to String, and split into words
     val impressions = unionStreams.flatMap(PostWasViewedDecoder(_))
 
+
+    // Kick off the streaming aggregators
     AggregateImpressionsToRedisByAuthor(redisConfig, impressions)
     AggregateImpressionsToRedisByPost(redisConfig, impressions)
 
@@ -115,9 +118,4 @@ object ElloStreamingCount {
     ssc.awaitTermination()
   }
 
-  def jdbcUrlFromPostgresUrl(url: String): String = {
-    val uri = new URI(url)
-    val Array(username, password) = uri.getUserInfo().split(":")
-    s"jdbc:postgresql://${uri.getHost()}:${uri.getPort()}${uri.getPath()}?sslmode=require&user=${username}&password=${password}"
-  }
 }

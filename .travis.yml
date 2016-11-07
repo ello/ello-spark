@@ -1,8 +1,11 @@
 language: scala
 scala:
 - 2.10.5
+addons:
+  postgresql: "9.3"
 services:
 - redis-server
+- postgresql
 cache:
   directories:
   - "$HOME/.ivy2/cache"
@@ -11,6 +14,8 @@ before_cache:
   # Tricks to avoid unnecessary cache updates
   - find $HOME/.ivy2 -name "ivydata-*.properties" -delete
   - find $HOME/.sbt -name "*.lock" -delete
+before_script:
+  - createdb ello-spark
 notifications:
   email: false
   slack:

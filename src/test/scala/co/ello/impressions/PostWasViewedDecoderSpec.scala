@@ -1,5 +1,4 @@
 import co.ello.testing._
-import java.nio.charset.StandardCharsets._
 import java.nio.file.{Files, Paths}
 import co.ello.impressions._
 

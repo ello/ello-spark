@@ -6,17 +6,21 @@ import org.apache.spark.streaming.dstream.MapWithStateDStream
 import org.apache.spark.rdd.RDD
 import com.redislabs.provider.redis._
 
-object AggregateImpressionsToRedisByPost {
-  def apply(redisConfig: RedisConfig, impressions: DStream[Impression]): Unit = {
-    postCountStreamFromImpressions(impressions).foreachRDD(savePostCountsToRedis(redisConfig, _))
+object AggregateImpressionsByPost {
+  def apply(redisConfig: RedisConfig, filePath: String, impressions: DStream[Impression], initialState: RDD[(String, Long)]): Unit = {
+    var dstream = postCountStreamFromImpressions(impressions, initialState)
+    dstream.foreachRDD(savePostCountsToRedis(redisConfig, _))
+    dstream.stateSnapshots.foreachRDD { rdd =>
+      rdd.map { case (post, count)  => s"$post,$count" }.saveAsTextFile(filePath)
+    }
   }
 
-  def postCountStreamFromImpressions(impressions: DStream[Impression]): MapWithStateDStream[String, Long, Long, (String, Long)] = {
+  def postCountStreamFromImpressions(impressions: DStream[Impression], initialState: RDD[(String, Long)]): MapWithStateDStream[String, Long, Long, (String, Long)] = {
     // Map each impression to a (post_id, 1) tuple so we can reduce by key to count the impressions
     val postCounts = impressions.map(i => (i.post_id, 1L)).reduceByKey(_ + _)
 
     // Set up the recurring state specs
-    val postStateSpec = StateSpec.function(CounterStateFunction.trackStateFunc _)
+    val postStateSpec = StateSpec.function(CounterStateFunction.trackStateFunc _).initialState(initialState)
 
     // Incorporate this batch into the long-running state
     postCounts.mapWithState(postStateSpec)

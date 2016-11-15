@@ -28,21 +28,21 @@ object ElloStreamingCount {
     if (args.length != 6) {
       System.err.println(
         """
-        | Usage: ElloStreamingImpressionCount <app-name> <stream-name> <endpoint-url> <region-name> <checkpoint-bucket-name> <redis-url> <postgres-url>
+        | Usage: ElloStreamingImpressionCount <app-name> <stream-name> <endpoint-url> <batch-interval> <checkpoint-bucket-name> <redis-url>
         |
         |    <app-name> is the name of the consumer app, used to track the read data in DynamoDB
         |    <stream-name> is the name of the Kinesis stream
         |    <endpoint-url> is the endpoint of the Kinesis service
         |                   (e.g. https://kinesis.us-east-1.amazonaws.com)
+        |    <batch-interval> is the number of milliseconds of data to roll into a Spark batch
         |    <checkpoint-bucket-name> is the name of an S3 bucket to store checkpoint data
         |    <redis-url> is the URL to a Redis host to store counts
-        |    <postgres-url> is the Heroku-style URL to a Postgres instance from which to pull initial post/author IDs
         """.stripMargin)
       System.exit(1)
     }
 
     // Populate the appropriate variables from the given args
-    val Array(appName, streamName, endpointUrl, checkpointBucket, redisUrl, postgresUrl) = args
+    val Array(appName, streamName, endpointUrl, interval, checkpointBucket, redisUrl) = args
 
     // Determine the number of shards from the stream using the low-level Kinesis Client from the AWS Java SDK.
     val credentials = new DefaultAWSCredentialsProviderChain().getCredentials()
@@ -61,7 +61,7 @@ object ElloStreamingCount {
     val numStreams = numShards
 
     // Spark Streaming batch interval
-    val batchInterval = Milliseconds(2000)
+    val batchInterval = Milliseconds(interval.toLong)
 
     // Kinesis checkpoint interval is the interval at which the DynamoDB is updated with information
     // on sequence number of records that have been received. Same as batchInterval for this
@@ -87,35 +87,36 @@ object ElloStreamingCount {
       // Set up a checkpoint path
       streamingContext.checkpoint(checkpointPath)
 
+      // Configure the Redis options
+      val redisConfig = new RedisConfig(new RedisEndpoint(redisUrl))
+
+      // Create the Kinesis DStreams
+      val kinesisStreams = (0 until numStreams).map { i =>
+        KinesisUtils.createStream(streamingContext, appName, streamName, endpointUrl, regionName,
+          InitialPositionInStream.TRIM_HORIZON, kinesisCheckpointInterval, StorageLevel.MEMORY_AND_DISK_2)
+      }
+
+      // Union all the streams
+      val unionStreams = streamingContext.union(kinesisStreams)
+
+      // Convert each line of Array[Byte] to String, and split into words
+      val impressions = unionStreams.flatMap(PostWasViewedDecoder(_))
+
+      // Kick off the streaming aggregators
+      val authorCheckpointPath = s"s3n://$checkpointBucket/authorSnapshots/"
+      AggregateImpressionsByAuthor(redisConfig,
+                                   authorCheckpointPath,
+                                   impressions, FileSnapshotLoader(streamingContext.sparkContext, authorCheckpointPath))
+      val postCheckpointPath = s"s3n://$checkpointBucket/postSnapshots/"
+      AggregateImpressionsByPost(redisConfig,
+                                 postCheckpointPath,
+                                 impressions,
+                                 FileSnapshotLoader(streamingContext.sparkContext, postCheckpointPath))
       streamingContext
     })
-
-    // Configure the Redis options
-    val redisConfig = new RedisConfig(new RedisEndpoint(redisUrl))
-
-    // Load the initial snapshot
-    var postCountsRDD = RedisSnapshotLoader(ssc.sparkContext, redisConfig, postgresUrl)
-
-    // Create the Kinesis DStreams
-    val kinesisStreams = (0 until numStreams).map { i =>
-      KinesisUtils.createStream(ssc, appName, streamName, endpointUrl, regionName,
-        InitialPositionInStream.TRIM_HORIZON, kinesisCheckpointInterval, StorageLevel.MEMORY_AND_DISK_2)
-    }
-
-    // Union all the streams
-    val unionStreams = ssc.union(kinesisStreams)
-
-    // Convert each line of Array[Byte] to String, and split into words
-    val impressions = unionStreams.flatMap(PostWasViewedDecoder(_))
-
-
-    // Kick off the streaming aggregators
-    AggregateImpressionsToRedisByAuthor(redisConfig, impressions)
-    AggregateImpressionsToRedisByPost(redisConfig, impressions)
 
     // Start the streaming context and await termination
     ssc.start()
     ssc.awaitTermination()
   }
-
 }

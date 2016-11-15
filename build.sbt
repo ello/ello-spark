@@ -1,4 +1,4 @@
-name := "Ello Spark"
+name := "ello-spark"
 
 version := "1.0"
 
@@ -59,4 +59,3 @@ compileScalastyle := org.scalastyle.sbt.ScalastylePlugin.scalastyle.in(Compile).
 lazy val testScalastyle = taskKey[Unit]("testScalastyle")
 testScalastyle := org.scalastyle.sbt.ScalastylePlugin.scalastyle.in(Test).toTask("").value
 (test in Test) <<= (test in Test) dependsOn testScalastyle
-

@@ -18,7 +18,7 @@ object PostWasViewedDecoder {
         if (record.getSchema().getName() == "post_was_viewed") Some(record) else None
     }
 
-    dataFileReader.iterator().toSeq collect {
+    dataFileReader.iterator().toSeq.collect {
       case PostWasViewedRecord(record) =>
         Impression(record.get("post").asInstanceOf[GenericRecord].get("id").toString(),
           record.get("author").asInstanceOf[GenericRecord].get("id").toString(),

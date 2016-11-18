@@ -23,7 +23,6 @@ import com.redislabs.provider.redis._
 
 object ElloStreamingCount {
   def main(args: Array[String]) {
-
     // Check that all required args were passed in.
     if (args.length != 6) {
       System.err.println(
@@ -61,7 +60,7 @@ object ElloStreamingCount {
     val numStreams = numShards
 
     // Spark Streaming batch interval
-    val batchInterval = Milliseconds(interval.toLong)
+    val batchInterval = Milliseconds(interval.toLong * 1000)
 
     // Kinesis checkpoint interval is the interval at which the DynamoDB is updated with information
     // on sequence number of records that have been received. Same as batchInterval for this
@@ -81,8 +80,13 @@ object ElloStreamingCount {
 
       // Shut down gracefully
       sparkConfig.set("spark.streaming.stopGracefullyOnShutdown","true")
+      // sparkConfig.set("spark.streaming.receiver.writeAheadLog.enable", "true")
+      sparkConfig.set("spark.streaming.driver.writeAheadLog.allowBatching", "false")
 
       val streamingContext = new StreamingContext(sparkConfig, batchInterval)
+
+      // Log more verbosely
+      streamingContext.sparkContext.setLogLevel("INFO")
 
       // Set up a checkpoint path
       streamingContext.checkpoint(checkpointPath)

@@ -5,13 +5,15 @@ import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.dstream.MapWithStateDStream
 import org.apache.spark.rdd.RDD
 import com.redislabs.provider.redis._
+import org.apache.log4j.Logger
 
 object AggregateImpressionsByAuthor {
   def apply(redisConfig: RedisConfig, filePath: String, impressions: DStream[Impression], initialState: RDD[(String, Long)]): Unit = {
     var dstream = authorCountStreamFromImpressions(impressions, initialState)
     dstream.foreachRDD(saveAuthorCountsToRedis(redisConfig, _))
     dstream.stateSnapshots.foreachRDD { rdd =>
-      rdd.map { case (author, count)  => s"$author,$count" }.saveAsTextFile(filePath)
+      Logger.getLogger(getClass.getName).info(s"Saving snapshot of ${rdd.count} author impression counts to $filePath")
+      rdd.map { case (author, count)  => s"$author,$count" }.coalesce(1).saveAsTextFile(filePath)
     }
   }
 

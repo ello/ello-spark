@@ -25,7 +25,7 @@ class AggregateImpressionsByAuthorSpec extends UnitSpec with StreamingActionBase
     }
 
     it("stores a snapshot of the current counts as flat files") {
-      val textValues = sc.textFile("tmp/snapshots/author/*").collect()
+      val textValues = sc.textFile("./tmp/snapshots/author/*").collect()
       textValues should contain ("1,4")
       textValues should contain ("2,2")
     }

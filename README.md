@@ -43,6 +43,7 @@ From there, you can poke around in the Spark Shell by running:
 
 I have two examples in here so far:
 
+
 ### User Relationship PageRank (Eigenvector Centrality)
 
 The [PageRank example](src/main/scala/ElloPageRank.scala) runs PageRank on all of the relationships in the network and outputs the users with the highest PageRank. It does not currently connect to Postgres to pull its data, so you'll need to do a bit of prep to run it.
@@ -62,6 +63,7 @@ Finally, run the job via `spark-submit`:
 
 While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status. When it completes, it will output the top users and their PageRank to the console.
 
+
 ### Follower Recommendation (Alternating Least Squares)
 
 The [Recommended Followers example](src/main/scala/ElloRecommend.scala) runs the ALS algorithm on all of the relationships in the network and outputs a set of recommended followers for that user. It connects to Postgres using a JDBC DataFrame to pull its data, which is slightly slower, but does not require any prep data. You will need to pull a `DATABASE_URL` for a prod replica to use it, however.
@@ -79,7 +81,6 @@ Finally, run the job via `spark-submit`:
 
     $ spark-submit --class "ElloRecommend" --master "local[*]" --driver-cores 2 --driver-memory 8G target/scala-2.10/ello-spark_2.10-1.0.jar <DATABASE_URL>
 
-<<<<<<< HEAD
 While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status. When it completes, it will output the recommended users and their rating to the console.
 
 

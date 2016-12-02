@@ -96,7 +96,7 @@ First, build the Scala jar as a full assembly (this gets rid of the need to mess
 
 Then, run the job via `spark-submit`:
 
-    $ spark-submit --class "co.ello.impressions.ElloStreamingCount" --master "local[*]" --driver-cores 2 --driver-memory 8G target/scala-2.10/ello-Spark-assembly-1.0.jar ello-streaming-impression-count ello-production-stream https://kinesis.us-east-1.amazonaws.com <S3 bucket for checkpoints> <Redis URL for storing counts>
+    $ spark-submit --class "co.ello.impressions.ElloStreamingCount" --master "local[*]" --driver-cores 2 --driver-memory 8G target/scala-2.10/ello-Spark-assembly-1.0.jar <KCL application name> <kinesis stream name> <kinesis endpoint> <spark batch interval> <KCL checkpoint interval> <S3 bucket for checkpoints> <Redis URL for storing counts>
 
 While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status. As it runs, it will output the top viewed posts to the console.
 

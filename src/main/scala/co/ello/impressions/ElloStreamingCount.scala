@@ -24,7 +24,7 @@ import com.redislabs.provider.redis._
 object ElloStreamingCount {
   def main(args: Array[String]) {
     // Check that all required args were passed in.
-    if (args.length != 6) {
+    if (args.length != 7) {
       System.err.println(
         """
         | Usage: ElloStreamingImpressionCount <app-name> <stream-name> <endpoint-url> <batch-interval> <checkpoint-bucket-name> <redis-url>
@@ -33,7 +33,8 @@ object ElloStreamingCount {
         |    <stream-name> is the name of the Kinesis stream
         |    <endpoint-url> is the endpoint of the Kinesis service
         |                   (e.g. https://kinesis.us-east-1.amazonaws.com)
-        |    <batch-interval> is the number of milliseconds of data to roll into a Spark batch
+        |    <batch-interval> is the number of seconds of data to roll into a Spark batch
+        |    <kinesis-checkpoint-interval> is the millisecond interval at which the KCL should checkpoint received Kinesis data
         |    <checkpoint-bucket-name> is the name of an S3 bucket to store checkpoint data
         |    <redis-url> is the URL to a Redis host to store counts
         """.stripMargin)
@@ -41,7 +42,7 @@ object ElloStreamingCount {
     }
 
     // Populate the appropriate variables from the given args
-    val Array(appName, streamName, endpointUrl, interval, checkpointBucket, redisUrl) = args
+    val Array(appName, streamName, endpointUrl, batchInterval, kinesisCheckpointInterval, checkpointBucket, redisUrl) = args
 
     // Determine the number of shards from the stream using the low-level Kinesis Client from the AWS Java SDK.
     val credentials = new DefaultAWSCredentialsProviderChain().getCredentials()
@@ -59,14 +60,6 @@ object ElloStreamingCount {
     // will receive data from multiple shards.
     val numStreams = numShards
 
-    // Spark Streaming batch interval
-    val batchInterval = Milliseconds(interval.toLong * 1000)
-
-    // Kinesis checkpoint interval is the interval at which the DynamoDB is updated with information
-    // on sequence number of records that have been received. Same as batchInterval for this
-    // example.
-    val kinesisCheckpointInterval = batchInterval
-
     // Get the region name from the endpoint URL to save Kinesis Client Library metadata in
     // DynamoDB of the same region as the Kinesis stream
     val regionName = AwsHostNameUtils.parseRegionName(endpointUrl, "")
@@ -83,7 +76,7 @@ object ElloStreamingCount {
       // sparkConfig.set("spark.streaming.receiver.writeAheadLog.enable", "true")
       sparkConfig.set("spark.streaming.driver.writeAheadLog.allowBatching", "false")
 
-      val streamingContext = new StreamingContext(sparkConfig, batchInterval)
+      val streamingContext = new StreamingContext(sparkConfig, Seconds(batchInterval.toLong))
 
       // Log more verbosely
       streamingContext.sparkContext.setLogLevel("INFO")
@@ -96,8 +89,14 @@ object ElloStreamingCount {
 
       // Create the Kinesis DStreams
       val kinesisStreams = (0 until numStreams).map { i =>
-        KinesisUtils.createStream(streamingContext, appName, streamName, endpointUrl, regionName,
-          InitialPositionInStream.TRIM_HORIZON, kinesisCheckpointInterval, StorageLevel.MEMORY_AND_DISK_2)
+        KinesisUtils.createStream(streamingContext,
+                                  appName,
+                                  streamName,
+                                  endpointUrl,
+                                  regionName,
+                                  InitialPositionInStream.TRIM_HORIZON,
+                                  Seconds(kinesisCheckpointInterval.toLong),
+                                  StorageLevel.MEMORY_AND_DISK_2)
       }
 
       // Union all the streams

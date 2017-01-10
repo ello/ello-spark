@@ -43,6 +43,7 @@ From there, you can poke around in the Spark Shell by running:
 
 I have two examples in here so far:
 
+
 ### User Relationship PageRank (Eigenvector Centrality)
 
 The [PageRank example](src/main/scala/ElloPageRank.scala) runs PageRank on all of the relationships in the network and outputs the users with the highest PageRank. It does not currently connect to Postgres to pull its data, so you'll need to do a bit of prep to run it.
@@ -60,15 +61,17 @@ Finally, run the job via `spark-submit`:
 
     $ spark-submit --class "ElloPageRank" --master "local[*]" --driver-cores 2 --driver-memory 8G target/scala-2.10/ello-spark.10-1.0.jar
 
-While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status. When it completes, it will output the top users and their PageRank to the  console.
+While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status. When it completes, it will output the top users and their PageRank to the console.
+
 
 ### Follower Recommendation (Alternating Least Squares)
 
 The [Recommended Followers example](src/main/scala/ElloRecommend.scala) runs the ALS algorithm on all of the relationships in the network and outputs a set of recommended followers for that user. It connects to Postgres using a JDBC DataFrame to pull its data, which is slightly slower, but does not require any prep data. You will need to pull a `DATABASE_URL` for a prod replica to use it, however.
 
-First, build the Scala jar:
+First, build the Scala jar as a full assembly (this gets rid of the need to mess
+with your classpath):
 
-    $ sbt package
+    $ sbt assembly
 
 Then, locate and copy the Postgres connection URL:
 
@@ -78,7 +81,24 @@ Finally, run the job via `spark-submit`:
 
     $ spark-submit --class "ElloRecommend" --master "local[*]" --driver-cores 2 --driver-memory 8G target/scala-2.10/ello-spark_2.10-1.0.jar <DATABASE_URL>
 
-While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status. When it completes, it will output the recommended users and their rating to the  console.
+While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status. When it completes, it will output the recommended users and their rating to the console.
+
+
+### Streaming Post Impression Counts
+
+The [Streaming Count example](src/main/scala/co/ello/impressions/ElloStreamingCount.scala) runs a Kinesis Client Library consumer to subscribe to incoming Kinesis events that indicate post impressions, and sums them as it goes, on both post and author dimensions.
+
+It requires that your AWS credentials be set as environment variables.
+
+First, build the Scala jar as a full assembly (this gets rid of the need to mess with your classpath):
+
+    $ sbt assembly
+
+Then, run the job via `spark-submit`:
+
+    $ spark-submit --class "co.ello.impressions.ElloStreamingCount" --master "local[*]" --driver-cores 2 --driver-memory 8G target/scala-2.10/ello-Spark-assembly-1.0.jar <KCL application name> <kinesis stream name> <kinesis endpoint> <spark batch interval> <KCL checkpoint interval> <S3 bucket for checkpoints> <Redis URL for storing counts>
+
+While jobs are executing (in the shell or in batch), you can visit `http://localhost:4040` to check their status. As it runs, it will output the top viewed posts to the console.
 
 ## Code of Conduct
 Ello was created by idealists who believe that the essential nature of all human beings is to be kind, considerate, helpful, intelligent, responsible, and respectful of others. To that end, we will be enforcing [the Ello rules](https://ello.co/wtf/policies/rules/) within all of our open source projects. If you don’t follow the rules, you risk being ignored, banned, or reported for abuse.

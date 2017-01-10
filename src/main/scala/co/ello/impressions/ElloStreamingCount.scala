@@ -73,7 +73,7 @@ object ElloStreamingCount {
 
       // Shut down gracefully
       sparkConfig.set("spark.streaming.stopGracefullyOnShutdown","true")
-      // sparkConfig.set("spark.streaming.receiver.writeAheadLog.enable", "true")
+      sparkConfig.set("spark.streaming.receiver.writeAheadLog.enable", "true")
       sparkConfig.set("spark.streaming.driver.writeAheadLog.allowBatching", "false")
 
       val streamingContext = new StreamingContext(sparkConfig, Seconds(batchInterval.toLong))

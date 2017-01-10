@@ -79,7 +79,7 @@ object ElloStreamingCount {
       val streamingContext = new StreamingContext(sparkConfig, Seconds(batchInterval.toLong))
 
       // Log more verbosely
-      streamingContext.sparkContext.setLogLevel("INFO")
+      // streamingContext.sparkContext.setLogLevel("WARN")
 
       // Set up a checkpoint path
       streamingContext.checkpoint(checkpointPath)

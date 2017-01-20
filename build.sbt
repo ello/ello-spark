@@ -2,8 +2,8 @@ name := "ello-spark"
 
 version := "1.0"
 
-scalaVersion := "2.10.5"
-sparkVersion := "2.0.1"
+scalaVersion := "2.11.8"
+sparkVersion := "2.1.0"
 
 sparkComponents ++= Seq("streaming", "sql", "graphx", "mllib")
 

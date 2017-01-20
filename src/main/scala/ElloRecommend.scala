@@ -1,87 +1,103 @@
+package co.ello
+
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.SparkConf
 import org.apache.spark.storage.StorageLevel
-import org.apache.spark.mllib.recommendation.ALS
-import org.apache.spark.mllib.recommendation.MatrixFactorizationModel
-import org.apache.spark.mllib.recommendation.Rating
+import org.apache.spark.ml.evaluation.RegressionEvaluator
+import org.apache.spark.ml.tuning.ParamGridBuilder
+import org.apache.spark.ml.recommendation.ALS
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.lit
+
 
 object ElloRecommend {
+
+  def maxIdFromTable(spark: SparkSession, dbUri: String, tableName: String): Long = {
+    val opts = Map(
+      "url" -> dbUri,
+      "driver" -> "org.postgresql.Driver",
+      "dbtable" -> s"(select max(id) as maxId from ${tableName}) tmp"
+    )
+    val maxIdDF = spark.read.format("jdbc").options(opts).load()
+    return maxIdDF.select("maxid").collect()(0)(0).asInstanceOf[Number].longValue
+  }
+
   def main(args: Array[String]) {
-    val conf = new SparkConf().setAppName("Ello Recommend")
-    val sc = new SparkContext(conf)
+    val spark = SparkSession
+      .builder()
+      .appName("Ello Follower Recommendations")
+      .getOrCreate()
 
-    val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+    spark.sparkContext.setCheckpointDir("tmp/checkpoint")
 
-    import sqlContext.implicits._
-    val prop = new java.util.Properties;
-    val dbUri = new java.net.URI(args(0))
+    val dbUri = JdbcUrlFromPostgresUrl(args(0))
+    val tableName = "followerships"
 
-    val Array(username, password) = dbUri.getUserInfo().split(":")
-    val dbUrl = "jdbc:postgresql://" + dbUri.getHost() + ':' + dbUri.getPort() + dbUri.getPath() + "?sslmode=require&user=" + username + "&password=" + password;
-    val maxIdDF = sqlContext.read.jdbc(dbUrl, "(select max(id) as maxId from followerships) tmp", prop)
-    maxIdDF.printSchema()
+    val maxId = maxIdFromTable(spark, dbUri, tableName)
+    println(s"maxId = $maxId")
 
-    val maxId = maxIdDF.select("maxid").collect()(0)(0).asInstanceOf[Number].longValue
-    println("maxId = ", maxId)
-
-    val jdbcDF = sqlContext.read.jdbc(dbUrl, "followerships", "id", 0.toLong, maxId, 250, prop)
-
-    jdbcDF.persist(StorageLevel.MEMORY_AND_DISK_SER)
-
-    jdbcDF.printSchema()
-
-    val ratings = jdbcDF.select("owner_id", "subject_id", "priority").filter("priority in ('friends', 'noise')").map( r =>
-      Rating(r.getInt(0), r.getInt(1), 1.0)
+    val opts = Map(
+      "url" -> dbUri,
+      "driver" -> "org.postgresql.Driver",
+      "numPartitions" -> "1000",
+      "partitionColumn" -> "id",
+      "lowerBound" -> "0",
+      "upperBound" -> maxId.toString,
+      "dbtable" -> tableName
     )
 
-    // Build the recommendation model using ALS
-    val rank = 50
-    val numIterations = 10
-    val model = ALS.trainImplicit(ratings.rdd, rank, numIterations)
+    val df = spark.read.format("jdbc").options(opts).load
 
-    println("userFeatures = ", model.userFeatures.count)
-    println("productFeatures = ", model.productFeatures.count)
+    val ratings = df.select("owner_id", "subject_id", "priority")
+      .filter("priority in ('friends', 'noise')")
+      .withColumn("rating", lit(1.0))
+      .cache()
 
-    val topKRecs = model.recommendProducts(1, 10)
-    println("topKRecs for user 1 = ", topKRecs.mkString("\n"))
+    // Build the recommendation model using ALS on the training data
+    val als = new ALS()
+      .setMaxIter(10)
+      .setImplicitPrefs(true)
+      .setUserCol("owner_id")
+      .setItemCol("subject_id")
+      .setRatingCol("rating")
 
+    val paramGrid = new ParamGridBuilder()
+      .addGrid(als.rank, Array(5, 10, 20, 40))
+      .addGrid(als.regParam, Array(0.1, 1.0, 10.0))
+      .build()
 
-    // Evaluate the model on rating data
-    // val usersProducts = ratings.map { case Rating(user, product, rate) =>
-    //   (user, product)
-    // }
-    // val predictions =
-    //   model.predict(usersProducts).map { case Rating(user, product, rate) =>
-    //     ((user, product), rate)
-    //   }
-    // val ratesAndPreds = ratings.map { case Rating(user, product, rate) =>
-    //   ((user, product), rate)
-    // }.join(predictions)
-    // val MSE = ratesAndPreds.map { case ((user, product), (r1, r2)) =>
-    //   val err = (r1 - r2)
-    //   err * err
-    // }.mean()
-    // println("Mean Squared Error = " + MSE)
+    val rmseEval = new RegressionEvaluator()
+        .setMetricName("rmse")
+        .setLabelCol("rating")
+        .setPredictionCol("prediction")
 
-    // val myFollowings = ratings.filter( f => f.owner_id === 1).select("subject_id")
-    // val candidates = ratings.select("subject_id").filter(!myFollowings.contains(_))
-    // val recommendations = model
-    //   .predict(candidates.map((0, _)))
-    //   .collect()
-    //   .sortBy(- _.rating)
-    //   .take(50)
+    // Fit and evaluate against the entire dataset -
+    // split/cross validation with a random split won't work with ALS
+    // because users outside the training set won't have results
+    // This is largely identical to the implementation of TrainValidationSplit
+    val numModels = paramGrid.length
+    val metrics = new Array[Double](paramGrid.length)
+    val models = als.fit(ratings, paramGrid)
 
-    // var i = 1
-    // println("Movies recommended for you:")
-    // recommendations.foreach { r =>
-    //   println("%2d".format(i) + ": " + r)
-    //   i += 1
-    // }
+    var i = 0
+    for (i <- 0 until numModels) {
+      val metric = rmseEval.evaluate(models(i).transform(ratings, paramGrid(i)))
+      println(s"Got metric $metric for model trained with ${paramGrid(i)}.")
+      metrics(i) += metric
+    }
 
-    // println(model.predict(1))
+    println(s"Train validation split metrics: ${metrics.toSeq}")
 
-    // Shut it down
-    sc.stop()
+    val (bestMetric, bestIndex) =
+      if (rmseEval.isLargerBetter) metrics.zipWithIndex.maxBy(_._1)
+      else metrics.zipWithIndex.minBy(_._1)
+    println(s"Best set of parameters:\n${paramGrid(bestIndex)}")
+    println(s"Best train validation split metric: $bestMetric.")
+
+    val bestModel = models(bestIndex)
+    bestModel.write.overwrite().save("tmp/model")
+
+    spark.stop()
   }
 }

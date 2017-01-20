@@ -18,7 +18,8 @@ libraryDependencies ++= Seq(
   "com.amazonaws" % "aws-java-sdk" % "1.10.77",
   "org.apache.hadoop" % "hadoop-aws" % "2.7.3",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
-  "com.holdenkarau" %% "spark-testing-base" % "2.0.0_0.4.7" % "test"
+  "com.holdenkarau" %% "spark-testing-base" % "2.0.0_0.4.7" % "test",
+  "com.github.fommil.netlib" % "all" % "1.1.2"
 )
 
 // Up the default RAM for tests so Spark doesn't implode

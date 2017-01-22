@@ -1,4 +1,4 @@
-package co.ello.impressions
+package co.ello
 
 import java.net.URI
 

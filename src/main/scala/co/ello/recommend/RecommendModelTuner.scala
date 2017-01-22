@@ -1,4 +1,4 @@
-package co.ello
+package co.ello.recommend
 
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
@@ -9,9 +9,10 @@ import org.apache.spark.ml.tuning.ParamGridBuilder
 import org.apache.spark.ml.recommendation.ALS
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.lit
+import co.ello.JdbcUrlFromPostgresUrl
 
 
-object ElloRecommend {
+object RecommendModelTuner {
 
   def maxIdFromTable(spark: SparkSession, dbUri: String, tableName: String): Long = {
     val opts = Map(
@@ -26,7 +27,7 @@ object ElloRecommend {
   def main(args: Array[String]) {
     val spark = SparkSession
       .builder()
-      .appName("Ello Follower Recommendations")
+      .appName("Ello Train Follower Recommendations")
       .getOrCreate()
 
     spark.sparkContext.setCheckpointDir("tmp/checkpoint")
